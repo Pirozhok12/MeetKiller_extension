@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "LectureKiller",
+  "version": "8.8",
+  "description": "Allows you to not give a damn 'bout what is going on in the meeting",
+  "action": {
+    "default_icon": {
+      "38": "./img/38main.png"
+    },
+    "default_popup": "popup.html",
+    "default_title": "LectureKiller"
+  },
+  "icons": {
+    "16": "./img/16x16.png",
+    "32": "./img/32x32.png",
+    "48": "./img/48x48.png"
+  },
+  "background": {
+    "service_worker": "./js/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://meet.google.com/*"],
+      "run_at": "document_idle",
+      "all_frames": false,
+      "js": ["./js/content.js"]
+    }
+  ],
+  "options_page": "popup.html?options=1",
+  "permissions": ["activeTab", "cookies", "storage", "background", "tabs"],
+  "host_permissions": ["https://meet.google.com/*"]
+}
