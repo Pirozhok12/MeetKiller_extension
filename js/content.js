@@ -11,7 +11,12 @@ function isActiveMeetCall() {
 
 
 function getParticipantCount() {
-    const div = document.querySelector('.uGOf1d');
+    const divCounetrSelectors = ['.uGOf1d', 'div[style*="fit-content"]'];
+    let div;
+    for (const selector of divCounetrSelectors) {
+        div = document.querySelector(selector);
+        if(div)break;
+    }
     if (div && isLeaveBtnPress !== true) {
         const count = parseInt(div.textContent, 10);
         
@@ -26,7 +31,7 @@ function getParticipantCount() {
         console.log("sendMessage ZOOM_OUT");
         chrome.runtime.sendMessage({ type: "ZOOM_OUT" });
         zoomedOut = true;
-        }
+    }
     return 0;
 }
 
@@ -45,9 +50,9 @@ const observer = new MutationObserver(() => {
 
             if (typeof threshold !== "number") return;
 
-            console.log("Compare:", count, "<=", threshold);
+            console.log("Compare:", count, "===", threshold);
 
-            if (count <= threshold) {
+            if (count >= threshold) {
                 observer.disconnect();
                 leaveMeet();
             }
@@ -92,8 +97,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
   
     if (msg.type === "TOGGLE_AUTO_LEAVE") {
-        autoLeaveEnabled = true;
-        console.log("TOGGLE_AUTO_LEAVE:", autoLeaveEnabled);
+        if (msg.isActive) {
+            autoLeaveEnabled = true;
+            console.log("TOGGLE_AUTO_LEAVE:", autoLeaveEnabled);
+        }
+        else{
+            autoLeaveEnabled = false;
+            console.log("TOGGLE_AUTO_LEAVE:", autoLeaveEnabled);
+        }
     }
 
 

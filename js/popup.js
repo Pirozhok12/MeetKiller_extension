@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.local.get(["participantsThreshold"], (data) => {
     const value = typeof data.participantsThreshold === "number"
         ? data.participantsThreshold
-        : slider.min || 1; // fallback
+        : slider.min || 17; // fallback
 
     slider.value = value;
     valueSpan.textContent = value;
