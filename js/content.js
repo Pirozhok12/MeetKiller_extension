@@ -1,77 +1,103 @@
-let isCounterActive = false;
-let counterInterval;
-let maxParticipants = 0;
+let isValueTaken = false;
+let isLeaveBtnPress = false;
+let zoomedOut = false;
+let autoLeaveEnabled = false;
+let threshold = 0;
 
-// Функция для обновления количества участников с отладочными выводами
-function updateParticipantCount() {
-    console.debug("Проверка количества участников");
-    const participantElement = document.querySelector('.uGOf1d');
 
-    if (participantElement) {
-        const participantCount = parseInt(participantElement.textContent, 10);
-        console.log("Текущее количество участников:", participantCount);
+function isActiveMeetCall() {
 
-        if (maxParticipants === 0) {
-            maxParticipants = participantCount;
-            console.debug("Установлено максимальное число участников:", maxParticipants);
-        }
-
-        if (participantCount < maxParticipants * 0.67 && isCounterActive) {
-            console.warn("Количество участников упало ниже 67% от максимума, выход из конференции");
-            leaveCall();
-        }
-    } else {
-        console.warn("Элемент с количеством участников (.uGOf1d) не найден.");
-    }
 }
 
-// Функция для выхода из конференции с отладкой
-function leaveCall() {
-    isCounterActive = false;
-    toggleParticipantCounter(false);
 
+function getParticipantCount() {
+    const div = document.querySelector('.uGOf1d');
+    if (div && isLeaveBtnPress !== true) {
+        const count = parseInt(div.textContent, 10);
+        
+        if(!isNaN(count) && count !== 0){
+            isValueTaken = true;
+            console.log("isValueTaken = true");
+            zoomedOut = false;
+            return count;
+        }
+    }
+    if(isValueTaken && !zoomedOut) {
+        console.log("sendMessage ZOOM_OUT");
+        chrome.runtime.sendMessage({ type: "ZOOM_OUT" });
+        zoomedOut = true;
+        }
+    return 0;
+}
+
+
+const observer = new MutationObserver(() => {
+
+    const count = getParticipantCount();
+    if (count === 0) return;
+    console.log("count:", count);
+    chrome.storage.local.set({ currentCount: count });
+    
+    if (autoLeaveEnabled === true){
+        chrome.storage.local.get("participantsThreshold", (data) => {
+            const threshold = data.participantsThreshold;
+            console.log("threshold:", threshold);   
+
+            if (typeof threshold !== "number") return;
+
+            console.log("Compare:", count, "<=", threshold);
+
+            if (count <= threshold) {
+                observer.disconnect();
+                leaveMeet();
+            }
+        });
+    }
+});
+
+observer.observe(document.body, { childList: true, subtree: true });
+
+
+function leaveMeet() {
     const leaveButtonSelectors = [
+        'button[aria-label="Покинуть видеовстречу"]',
         'button[aria-label="Завершити дзвінок"]',
         'button[aria-label="Leave call"]',
         'button[aria-label="End call"]',
-        'button[aria-label*="Завершить звонок"]',
         'button[aria-label*="Leave"]',
-        'button[aria-label*="End"]'
+        'button[aria-label*="End"]',
+        'button[aria-label*="видеовстречу"]',
+        'button[aria-label*="відеозустріч"]'
     ];
 
-    let leaveButton = null;
-
     for (const selector of leaveButtonSelectors) {
-        leaveButton = document.querySelector(selector);
-        if (leaveButton) {
-            leaveButton.click();
+        const btn = document.querySelector(selector);
+        if (btn) {
+            btn.click();
             console.log("Кнопка выхода нажата");
             return;
         }
     }
-
-    if (!leaveButton) {
-        console.error("Кнопка выхода не найдена");
-    }
+    console.error("Leave button not found");
 }
 
-// Функция для переключения состояния счетчика с отладкой
-function toggleParticipantCounter(active) {
-    isCounterActive = active;
-    console.debug("Состояние счётчика участников:", isCounterActive ? "активно" : "не активно");
 
-    if (isCounterActive) {
-        console.log("Запуск интервала для обновления количества участников");
-        counterInterval = setInterval(updateParticipantCount, 2000);
-    } else {
-        console.log("Остановка интервала для обновления количества участников");
-        clearInterval(counterInterval);
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === "LEAVE_MEET") {
+        observer.disconnect();
+        chrome.runtime.sendMessage({ type: "ZOOM_RESET" });
+        console.log(" sendMessage ZOOM_RESET");
+        isLeaveBtnPress = true;
+        leaveMeet();
     }
-}
+  
+    if (msg.type === "TOGGLE_AUTO_LEAVE") {
+        autoLeaveEnabled = true;
+        console.log("TOGGLE_AUTO_LEAVE:", autoLeaveEnabled);
+    }
 
-// Обработчик сообщений из popup.js
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.action === "toggleCounter") {
-        toggleParticipantCounter(message.isActive);
-    }
+
 });
+
+
+
